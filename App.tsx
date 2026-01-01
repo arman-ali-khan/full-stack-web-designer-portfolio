@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ScrollControls, Scroll } from '@react-three/drei';
@@ -24,15 +25,33 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isInitialCheckDone, setIsInitialCheckDone] = useState(false);
-  const [currentPath, setCurrentPath] = useState(window.location.pathname);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [currentPath, setCurrentPath] = useState(() => {
+    try {
+      return window.location.pathname;
+    } catch {
+      return '/';
+    }
+  });
+
+  const safeUpdateHistory = (path: string, type: 'push' | 'replace' = 'push') => {
+    try {
+      if (type === 'push') {
+        window.history.pushState({}, '', path);
+      } else {
+        window.history.replaceState({}, '', path);
+      }
+    } catch (e) {
+      // Fixed: changed undefined 'typeState' to 'type'
+      console.warn(`Nexus Navigation: History ${type} blocked by environment. Using internal state fallback.`, e);
+    }
+  };
 
   useEffect(() => {
     const initializeApp = async () => {
-      console.log('Nexus: Booting systems...');
+      console.log('Nexus: System check initiated...');
       
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Gateway Timeout: DB Connection failed.')), 10000)
+        setTimeout(() => reject(new Error('DB Timeout')), 8000)
       );
 
       try {
@@ -47,8 +66,9 @@ const App: React.FC = () => {
           }
         };
 
-        const result = await Promise.race([checkProfiles(), timeoutPromise]);
-        const { count, error: profileError } = result as any;
+        const result: any = await Promise.race([checkProfiles(), timeoutPromise]);
+        const count = result?.count || 0;
+        const profileError = result?.error;
 
         const tableNotFound = profileError && (
           profileError.code === '42P01' || 
@@ -62,19 +82,22 @@ const App: React.FC = () => {
         const { data: { session } } = await supabase.auth.getSession();
         setIsAuthenticated(!!session);
         
-        if (currentPath === '/install' && !isFreshInstall) {
-          window.history.replaceState({}, '', '/');
+        // Initial path routing
+        if (currentPath.includes('/install') && !isFreshInstall) {
+          safeUpdateHistory('/', 'replace');
           setCurrentPath('/');
-        } else if (currentPath === '/admin') {
-          if (session) setIsAdmin(true);
-          else setShowLogin(true);
+        } else if (currentPath.includes('/admin')) {
+          if (session) {
+            setIsAdmin(true);
+          } else {
+            setShowLogin(true);
+          }
         }
 
         setIsInitialCheckDone(true);
         fetchProjects();
       } catch (err: any) {
-        console.error('Nexus Initialization Crash:', err.message);
-        setErrorMsg(err.message);
+        console.error('Nexus Boot Failure:', err.message);
         setIsInitialCheckDone(true);
         setNeedsInstall(true); 
       }
@@ -84,11 +107,20 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(!!session);
-      if (!session) setIsAdmin(false);
-      else setNeedsInstall(false);
+      if (!session) {
+        setIsAdmin(false);
+      } else {
+        setNeedsInstall(false);
+      }
     });
 
-    const handlePopState = () => setCurrentPath(window.location.pathname);
+    const handlePopState = () => {
+      try {
+        setCurrentPath(window.location.pathname);
+      } catch {
+        // Fallback if location access is restricted
+      }
+    };
     window.addEventListener('popstate', handlePopState);
 
     return () => {
@@ -106,10 +138,10 @@ const App: React.FC = () => {
 
       if (error) {
         if (error.code !== '42P01' && !error.message?.includes('not found')) {
-          console.error('Nexus Fetch Error:', error.message);
+          console.error('Nexus Data Error:', error.message);
         }
-      } else {
-        const mappedProjects: Project[] = (data || []).map((p: any) => ({
+      } else if (data) {
+        const mappedProjects: Project[] = data.map((p: any) => ({
           id: p.id,
           title: p.title,
           description: p.description,
@@ -126,9 +158,11 @@ const App: React.FC = () => {
 
   const toggleAdmin = () => {
     if (isAuthenticated) {
-      setIsAdmin(!isAdmin);
-      window.history.pushState({}, '', isAdmin ? '/' : '/admin');
-      setCurrentPath(isAdmin ? '/' : '/admin');
+      const nextAdminState = !isAdmin;
+      setIsAdmin(nextAdminState);
+      const path = nextAdminState ? '/admin' : '/';
+      safeUpdateHistory(path);
+      setCurrentPath(path);
     } else {
       setShowLogin(true);
     }
@@ -143,20 +177,20 @@ const App: React.FC = () => {
           className="flex flex-col items-center gap-4"
         >
           <div className="w-12 h-12 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-[10px] tracking-widest uppercase opacity-50">Synchronizing_Neural_Grid...</span>
+          <span className="text-[10px] tracking-widest uppercase opacity-40">Connecting_to_nexus_node...</span>
         </motion.div>
       </div>
     );
   }
 
-  if (needsInstall || currentPath === '/install') {
+  if (needsInstall || currentPath.includes('/install')) {
     return (
       <Register 
         isInstallMode={true}
         onComplete={() => { 
           setNeedsInstall(false); 
           setIsAdmin(true); 
-          window.history.replaceState({}, '', '/admin');
+          safeUpdateHistory('/admin', 'replace');
           setCurrentPath('/admin');
           fetchProjects();
         }} 
@@ -169,7 +203,7 @@ const App: React.FC = () => {
       <AdminDashboard 
         onClose={() => {
           setIsAdmin(false);
-          window.history.pushState({}, '', '/');
+          safeUpdateHistory('/');
           setCurrentPath('/');
         }} 
         projects={projects} 
@@ -182,7 +216,7 @@ const App: React.FC = () => {
     <div className="relative w-full min-h-screen bg-[#050505] selection:bg-purple-500/30">
       <Suspense fallback={
         <div className="flex items-center justify-center h-screen text-white font-mono uppercase tracking-widest text-[10px] opacity-30">
-          Loading_Assets...
+          Syncing_Assets...
         </div>
       }>
         <div className="fixed inset-0 z-0">
@@ -228,7 +262,7 @@ const App: React.FC = () => {
             onLogin={() => {
               setShowLogin(false);
               setIsAdmin(true);
-              window.history.pushState({}, '', '/admin');
+              safeUpdateHistory('/admin');
               setCurrentPath('/admin');
               fetchProjects();
             }} 
