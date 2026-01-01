@@ -31,10 +31,37 @@ export interface Testimonial {
   role: string;
 }
 
+export interface Skill {
+  id: string;
+  name: string;
+  order_index: number;
+}
+
+export interface NavbarItem {
+  id: string;
+  label: string;
+  href: string;
+  icon_name: string;
+  order_index: number;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  created_at: string;
+}
+
 export interface SiteSettings {
   hero_title: string;
   hero_subtitle: string;
   hero_description: string;
   contact_email: string;
   location: string;
+  site_name?: string;
+  footer_copy?: string;
+  twitter_url?: string;
+  dribbble_url?: string;
+  linkedin_url?: string;
 }

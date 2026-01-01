@@ -1,19 +1,32 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Home, Grid, Briefcase, Mail, Settings, Layout } from 'lucide-react';
+import { Home, Grid, Briefcase, Mail, Settings, Layout, Command } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { NavbarItem } from '../types';
+
+const iconMap: Record<string, any> = {
+  Home, Layout, Grid: Layout, Briefcase, Mail, Settings, Command
+};
 
 interface NavbarProps {
   onAdminClick: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ onAdminClick }) => {
-  const navItems = [
-    { icon: <Home size={20} />, label: 'Home', href: '#home' },
-    { icon: <Layout size={20} />, label: 'Work', href: '#work' },
-    { icon: <Grid size={20} />, label: 'Services', href: '#services' },
-    { icon: <Briefcase size={20} />, label: 'Experience', href: '#experience' },
-    { icon: <Mail size={20} />, label: 'Contact', href: '#contact' },
+  const [items, setItems] = useState<NavbarItem[]>([]);
+
+  useEffect(() => {
+    const fetchNav = async () => {
+      const { data } = await supabase.from('navbar_items').select('*').order('order_index', { ascending: true });
+      if (data) setItems(data);
+    };
+    fetchNav();
+  }, []);
+
+  const displayItems = items.length > 0 ? items : [
+    { id: '1', label: 'Home', href: '#home', icon_name: 'Home', order_index: 0 },
+    { id: '2', label: 'Work', href: '#work', icon_name: 'Layout', order_index: 1 },
+    { id: '3', label: 'Contact', href: '#contact', icon_name: 'Mail', order_index: 2 }
   ];
 
   return (
@@ -21,26 +34,29 @@ const Navbar: React.FC<NavbarProps> = ({ onAdminClick }) => {
       <motion.nav 
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="glass rounded-full px-6 py-3 flex items-center gap-4 shadow-2xl"
+        className="glass rounded-full px-6 py-3 flex items-center gap-2 shadow-2xl border-white/5"
       >
-        {navItems.map((item, idx) => (
-          <a
-            key={idx}
-            href={item.href}
-            className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all duration-300 relative group"
-          >
-            {item.icon}
-            <span className="absolute -top-10 left-1/2 -translate-x-1/2 glass px-2 py-1 rounded text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-              {item.label}
-            </span>
-          </a>
-        ))}
-        <div className="w-[1px] h-8 bg-white/10 mx-2" />
+        {displayItems.map((item, idx) => {
+          const Icon = iconMap[item.icon_name] || Home;
+          return (
+            <a
+              key={item.id}
+              href={item.href}
+              className="p-3 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition-all duration-300 relative group"
+            >
+              <Icon size={18} strokeWidth={1.5} />
+              <span className="absolute -top-12 left-1/2 -translate-x-1/2 glass px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap scale-90 group-hover:scale-100 pointer-events-none border-white/10">
+                {item.label}
+              </span>
+            </a>
+          );
+        })}
+        <div className="w-[1px] h-6 bg-white/10 mx-2" />
         <button
           onClick={onAdminClick}
-          className="p-3 text-white/40 hover:text-purple-400 hover:bg-purple-500/10 rounded-full transition-all duration-300"
+          className="p-3 text-white/30 hover:text-purple-400 hover:bg-purple-500/10 rounded-full transition-all duration-300"
         >
-          <Settings size={20} />
+          <Settings size={18} strokeWidth={1.5} />
         </button>
       </motion.nav>
     </div>
