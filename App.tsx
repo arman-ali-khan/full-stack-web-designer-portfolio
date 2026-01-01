@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ScrollControls, Scroll } from '@react-three/drei';
 import { AnimatePresence, motion } from 'framer-motion';
 import Navbar from './components/Navbar';
+import Header from './components/Header';
 import Hero from './components/Hero';
 import Services from './components/Services';
 import Portfolio from './components/Portfolio';
@@ -41,65 +41,36 @@ const App: React.FC = () => {
         window.history.replaceState({}, '', path);
       }
     } catch (e) {
-      // Fixed: changed undefined 'typeState' to 'type'
-      console.warn(`Nexus Navigation: History ${type} blocked by environment. Using internal state fallback.`, e);
+      console.warn(`Nexus Navigation: History ${type} blocked. Using state fallback.`, e);
     }
   };
 
   useEffect(() => {
     const initializeApp = async () => {
-      console.log('Nexus: System check initiated...');
-      
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('DB Timeout')), 8000)
-      );
+      // Fetch projects immediately to populate the landing page
+      fetchProjects();
 
       try {
-        const checkProfiles = async () => {
-          try {
-            const { count, error } = await supabase
-              .from('profiles')
-              .select('*', { count: 'exact', head: true });
-            return { count, error };
-          } catch (e) {
-            return { count: 0, error: e };
-          }
-        };
-
-        const result: any = await Promise.race([checkProfiles(), timeoutPromise]);
-        const count = result?.count || 0;
-        const profileError = result?.error;
-
-        const tableNotFound = profileError && (
-          profileError.code === '42P01' || 
-          profileError.message?.toLowerCase().includes('not found') ||
-          profileError.message?.toLowerCase().includes('does not exist')
-        );
+        const { count, error: profileError } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
         
+        const tableNotFound = profileError && (profileError.code === '42P01');
         const isFreshInstall = tableNotFound || (count === 0 && !profileError);
+        
         setNeedsInstall(!!isFreshInstall);
 
         const { data: { session } } = await supabase.auth.getSession();
         setIsAuthenticated(!!session);
         
-        // Initial path routing
-        if (currentPath.includes('/install') && !isFreshInstall) {
-          safeUpdateHistory('/', 'replace');
-          setCurrentPath('/');
-        } else if (currentPath.includes('/admin')) {
-          if (session) {
-            setIsAdmin(true);
-          } else {
-            setShowLogin(true);
-          }
+        if (currentPath.includes('/admin') && session) {
+          setIsAdmin(true);
         }
 
         setIsInitialCheckDone(true);
-        fetchProjects();
       } catch (err: any) {
-        console.error('Nexus Boot Failure:', err.message);
+        console.error('Nexus Init Error:', err.message);
         setIsInitialCheckDone(true);
-        setNeedsInstall(true); 
       }
     };
 
@@ -107,22 +78,15 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(!!session);
-      if (!session) {
-        setIsAdmin(false);
-      } else {
-        setNeedsInstall(false);
-      }
+      if (!session) setIsAdmin(false);
     });
 
     const handlePopState = () => {
       try {
         setCurrentPath(window.location.pathname);
-      } catch {
-        // Fallback if location access is restricted
-      }
+      } catch {}
     };
     window.addEventListener('popstate', handlePopState);
-
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('popstate', handlePopState);
@@ -136,11 +100,7 @@ const App: React.FC = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        if (error.code !== '42P01' && !error.message?.includes('not found')) {
-          console.error('Nexus Data Error:', error.message);
-        }
-      } else if (data) {
+      if (data) {
         const mappedProjects: Project[] = data.map((p: any) => ({
           id: p.id,
           title: p.title,
@@ -152,11 +112,11 @@ const App: React.FC = () => {
         setProjects(mappedProjects);
       }
     } catch (e: any) {
-      console.error('Nexus Fetch Exception:', e.message);
+      console.error('Nexus Data Fetch Exception:', e.message);
     }
   };
 
-  const toggleAdmin = () => {
+  const handleAdminToggle = () => {
     if (isAuthenticated) {
       const nextAdminState = !isAdmin;
       setIsAdmin(nextAdminState);
@@ -168,22 +128,8 @@ const App: React.FC = () => {
     }
   };
 
-  if (!isInitialCheckDone) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-[#050505] text-white font-mono">
-        <motion.div
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ repeat: Infinity, duration: 1.5 }}
-          className="flex flex-col items-center gap-4"
-        >
-          <div className="w-12 h-12 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-[10px] tracking-widest uppercase opacity-40">Connecting_to_nexus_node...</span>
-        </motion.div>
-      </div>
-    );
-  }
-
-  if (needsInstall || currentPath.includes('/install')) {
+  // Only show register if path is /install AND database has no users
+  if (currentPath.includes('/install') && needsInstall) {
     return (
       <Register 
         isInstallMode={true}
@@ -214,11 +160,9 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full min-h-screen bg-[#050505] selection:bg-purple-500/30">
-      <Suspense fallback={
-        <div className="flex items-center justify-center h-screen text-white font-mono uppercase tracking-widest text-[10px] opacity-30">
-          Syncing_Assets...
-        </div>
-      }>
+      <Header onLoginClick={handleAdminToggle} isAuthenticated={isAuthenticated} />
+      
+      <Suspense fallback={null}>
         <div className="fixed inset-0 z-0">
           <Canvas 
             shadows 
@@ -254,7 +198,7 @@ const App: React.FC = () => {
         </div>
       </Suspense>
 
-      <Navbar onAdminClick={toggleAdmin} />
+      <Navbar onAdminClick={handleAdminToggle} />
 
       <AnimatePresence>
         {showLogin && (
