@@ -29,31 +29,33 @@ const App: React.FC = () => {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // 1. Check if any profiles exist to determine if it's a fresh install
+        // 1. Check if the profiles table exists and has entries
         const { count, error: profileError } = await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true });
 
-        const isFreshInstall = count === 0;
+        // If the table doesn't exist (error code 42P01) or is empty, we need installation
+        const isFreshInstall = (profileError && profileError.code === '42P01') || count === 0;
         setNeedsInstall(isFreshInstall);
 
         // 2. Check Session
         const { data: { session } } = await supabase.auth.getSession();
         setIsAuthenticated(!!session);
         
-        // 3. Handle routing for /install or /admin
+        // 3. Routing Logic
         if (currentPath === '/install' && !isFreshInstall) {
-          // Block /install if already installed
           window.history.replaceState({}, '', '/');
           setCurrentPath('/');
         } else if (currentPath === '/admin' && !!session) {
           setIsAdmin(true);
+        } else if (currentPath === '/admin' && !session) {
+          setShowLogin(true);
         }
 
         setIsInitialCheckDone(true);
         fetchProjects();
       } catch (err: any) {
-        console.error('Initialization error:', err.message);
+        console.error('Initialization crash:', err.message);
         setIsInitialCheckDone(true);
       }
     };
@@ -69,7 +71,6 @@ const App: React.FC = () => {
       }
     });
 
-    // Listen for path changes for simple routing
     const handlePopState = () => setCurrentPath(window.location.pathname);
     window.addEventListener('popstate', handlePopState);
 
@@ -87,7 +88,10 @@ const App: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching projects:', error.message);
+        // Only log if it's not a missing table error (which is handled by needsInstall)
+        if (error.code !== '42P01') {
+          console.error('Error fetching projects:', error.message);
+        }
       } else {
         const mappedProjects: Project[] = (data || []).map((p: any) => ({
           id: p.id,
@@ -119,14 +123,15 @@ const App: React.FC = () => {
         <motion.div
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ repeat: Infinity, duration: 1.5 }}
+          className="tracking-widest"
         >
-          INITIALIZING_SECURE_KERNEL...
+          BOOTING_NEXUS_CORE...
         </motion.div>
       </div>
     );
   }
 
-  // Show Register/Install if database is empty or specifically visiting /install when empty
+  // Setup/Installation View
   if (needsInstall || (currentPath === '/install' && needsInstall)) {
     return (
       <Register 
@@ -135,18 +140,21 @@ const App: React.FC = () => {
           setNeedsInstall(false); 
           setIsAdmin(true); 
           window.history.replaceState({}, '', '/admin');
+          setCurrentPath('/admin');
           fetchProjects();
         }} 
       />
     );
   }
 
+  // Admin View
   if (isAdmin && isAuthenticated) {
     return (
       <AdminDashboard 
         onClose={() => {
           setIsAdmin(false);
           window.history.pushState({}, '', '/');
+          setCurrentPath('/');
         }} 
         projects={projects} 
         onUpdate={fetchProjects}
@@ -154,9 +162,10 @@ const App: React.FC = () => {
     );
   }
 
+  // Main Landing View
   return (
     <div className="relative w-full min-h-screen bg-[#050505] selection:bg-purple-500/30">
-      <Suspense fallback={<div className="flex items-center justify-center h-screen text-white font-mono">LOADING_3D_ASSETS...</div>}>
+      <Suspense fallback={<div className="flex items-center justify-center h-screen text-white font-mono">STABILIZING_FLUID_SCENE...</div>}>
         <Canvas 
           shadows 
           camera={{ position: [0, 0, 5], fov: 45 }}
@@ -178,9 +187,9 @@ const App: React.FC = () => {
                 <footer className="w-full py-20 px-10 flex flex-col md:flex-row justify-between items-center opacity-50 text-sm">
                   <p>© 2024 NEXUS DESIGN STUDIO</p>
                   <div className="flex gap-6 mt-4 md:mt-0">
-                    <a href="#" className="hover:text-purple-400 transition-colors">DRIBBBLE</a>
-                    <a href="#" className="hover:text-purple-400 transition-colors">TWITTER</a>
-                    <a href="#" className="hover:text-purple-400 transition-colors">LINKEDIN</a>
+                    <a href="#" className="hover:text-purple-400 transition-colors uppercase tracking-widest text-[10px]">Dribbble</a>
+                    <a href="#" className="hover:text-purple-400 transition-colors uppercase tracking-widest text-[10px]">Twitter</a>
+                    <a href="#" className="hover:text-purple-400 transition-colors uppercase tracking-widest text-[10px]">Linkedin</a>
                   </div>
                 </footer>
                 <div className="h-24" />
@@ -199,6 +208,7 @@ const App: React.FC = () => {
               setShowLogin(false);
               setIsAdmin(true);
               window.history.pushState({}, '', '/admin');
+              setCurrentPath('/admin');
               fetchProjects();
             }} 
             onCancel={() => setShowLogin(false)} 
