@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ScrollControls, Scroll } from '@react-three/drei';
@@ -31,15 +30,20 @@ const App: React.FC = () => {
     const initializeApp = async () => {
       try {
         // 1. Check if profiles table exists/has data
-        // Error code 42P01 means table does not exist
         const { count, error: profileError } = await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true });
 
-        // Removed profileError.status === 404 because PostgrestError does not have a 'status' property.
         // PostgreSQL error code '42P01' indicates the table does not exist.
-        const isFreshInstall = (profileError && profileError.code === '42P01') || count === 0;
-        setNeedsInstall(isFreshInstall);
+        // Some configurations might return a generic message or error code.
+        const tableNotFound = profileError && (
+          profileError.code === '42P01' || 
+          profileError.message?.toLowerCase().includes('not found') ||
+          profileError.message?.toLowerCase().includes('does not exist')
+        );
+        
+        const isFreshInstall = tableNotFound || (count === 0 && !profileError);
+        setNeedsInstall(!!isFreshInstall);
 
         // 2. Check Session
         const { data: { session } } = await supabase.auth.getSession();
@@ -47,7 +51,6 @@ const App: React.FC = () => {
         
         // 3. Routing Logic
         if (currentPath === '/install' && !isFreshInstall) {
-          // Redirect away from install if already set up
           window.history.replaceState({}, '', '/');
           setCurrentPath('/');
         } else if (currentPath === '/admin') {
@@ -62,7 +65,10 @@ const App: React.FC = () => {
         fetchProjects();
       } catch (err: any) {
         console.error('Initialization crash:', err.message);
+        // Fallback to showing app but marking check as done
         setIsInitialCheckDone(true);
+        // If we can't even connect, we might want to default to install or show an error
+        setNeedsInstall(true); 
       }
     };
 
@@ -94,7 +100,7 @@ const App: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        if (error.code !== '42P01') {
+        if (error.code !== '42P01' && !error.message?.includes('not found')) {
           console.error('Error fetching projects:', error.message);
         }
       } else {
@@ -168,7 +174,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Main Public Portfolio View
   return (
     <div className="relative w-full min-h-screen bg-[#050505] selection:bg-purple-500/30">
       <Suspense fallback={<div className="flex items-center justify-center h-screen text-white font-mono uppercase tracking-widest text-xs opacity-50">Synchronizing...</div>}>
