@@ -1,28 +1,18 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Quote } from 'lucide-react';
+import { Testimonial } from '../types';
 
-const testimonials = [
-  {
-    text: "Nexus transformed our digital presence. The 3D interactions provided an level of engagement we hadn't seen before.",
-    author: "Alex Rivers",
-    role: "CEO, Stellar Media"
-  },
-  {
-    text: "Working with them was seamless. The attention to detail in the minimalist design perfectly matched our brand vision.",
-    author: "Sarah Chen",
-    role: "Product Lead, Flow State"
-  },
-  {
-    text: "A true visionary in the Web3 design space. The performance optimization on the site is industry-leading.",
-    author: "Marcus Thorne",
-    role: "Founder, Neo Ecosystems"
-  }
-];
+interface TestimonialsProps {
+  data: Testimonial[];
+}
 
-const Testimonials: React.FC = () => {
+const Testimonials: React.FC<TestimonialsProps> = ({ data }) => {
   const [index, setIndex] = useState(0);
+  
+  const testimonials = data.length > 0 ? data : [
+    { text: "Nexus transformed our digital presence.", author: "Alex Rivers", role: "CEO, Stellar Media" }
+  ];
 
   const next = () => setIndex((prev) => (prev + 1) % testimonials.length);
   const prev = () => setIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
@@ -47,24 +37,26 @@ const Testimonials: React.FC = () => {
               className="py-10"
             >
               <p className="text-2xl md:text-4xl font-light italic leading-relaxed mb-8">
-                "{testimonials[index].text}"
+                "{testimonials[index]?.text}"
               </p>
               <div>
-                <h4 className="text-xl font-bold">{testimonials[index].author}</h4>
-                <p className="text-purple-400 text-sm tracking-widest uppercase font-mono">{testimonials[index].role}</p>
+                <h4 className="text-xl font-bold">{testimonials[index]?.author}</h4>
+                <p className="text-purple-400 text-sm tracking-widest uppercase font-mono">{testimonials[index]?.role}</p>
               </div>
             </motion.div>
           </AnimatePresence>
         </div>
 
-        <div className="flex justify-center gap-6 mt-12">
-          <button onClick={prev} className="p-4 glass rounded-full hover:bg-white/10 transition-all">
-            <ChevronLeft />
-          </button>
-          <button onClick={next} className="p-4 glass rounded-full hover:bg-white/10 transition-all">
-            <ChevronRight />
-          </button>
-        </div>
+        {testimonials.length > 1 && (
+          <div className="flex justify-center gap-6 mt-12">
+            <button onClick={prev} className="p-4 glass rounded-full hover:bg-white/10 transition-all">
+              <ChevronLeft />
+            </button>
+            <button onClick={next} className="p-4 glass rounded-full hover:bg-white/10 transition-all">
+              <ChevronRight />
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

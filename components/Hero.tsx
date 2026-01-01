@@ -1,8 +1,12 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
+import { SiteSettings } from '../types';
 
-const Hero: React.FC = () => {
+interface HeroProps {
+  data: SiteSettings | null;
+}
+
+const Hero: React.FC<HeroProps> = ({ data }) => {
   return (
     <section id="home" className="h-screen flex flex-col items-center justify-center px-6 relative">
       <motion.div
@@ -12,22 +16,23 @@ const Hero: React.FC = () => {
         className="text-center z-10"
       >
         <span className="text-purple-500 font-mono tracking-[0.3em] text-xs mb-4 block uppercase">
-          Digital Architect & Interface Designer
+          {data?.hero_subtitle || 'Digital Architect & Interface Designer'}
         </span>
         <h1 className="text-6xl md:text-9xl font-bold tracking-tighter leading-none mb-6">
-          CRAFTING <br />
+          {data?.hero_title.split(' ').slice(0, 1) || 'CRAFTING'} <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-cyan-400 to-purple-500 bg-[length:200%_auto] animate-gradient">
-            DIGITAL REALMS
+            {data?.hero_title.split(' ').slice(1).join(' ') || 'DIGITAL REALMS'}
           </span>
         </h1>
         <p className="max-w-xl mx-auto text-white/60 text-lg md:text-xl font-light leading-relaxed mb-10">
-          Bridging the gap between minimalist aesthetics and high-performance Web3 interactions. Let's build the future of the web.
+          {data?.hero_description || "Bridging the gap between minimalist aesthetics and high-performance Web3 interactions."}
         </p>
         
         <div className="flex gap-4 justify-center">
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => document.getElementById('work')?.scrollIntoView({ behavior: 'smooth' })}
             className="px-8 py-4 bg-white text-black font-bold rounded-full hover:bg-purple-100 transition-colors"
           >
             EXPLORE WORK
@@ -35,6 +40,7 @@ const Hero: React.FC = () => {
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
             className="px-8 py-4 glass text-white font-bold rounded-full"
           >
             LET'S TALK

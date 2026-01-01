@@ -6,13 +6,14 @@ export interface Project {
   imageUrl: string;
   techStack: string[];
   link: string;
+  order_index?: number;
 }
 
 export interface Service {
   id: string;
   title: string;
   description: string;
-  icon: string;
+  icon_name: string;
 }
 
 export interface Experience {
@@ -23,13 +24,17 @@ export interface Experience {
   description: string;
 }
 
+export interface Testimonial {
+  id: string;
+  text: string;
+  author: string;
+  role: string;
+}
+
 export interface SiteSettings {
-  name: string;
-  bio: string;
-  email: string;
-  socials: {
-    github: string;
-    twitter: string;
-    linkedin: string;
-  };
+  hero_title: string;
+  hero_subtitle: string;
+  hero_description: string;
+  contact_email: string;
+  location: string;
 }

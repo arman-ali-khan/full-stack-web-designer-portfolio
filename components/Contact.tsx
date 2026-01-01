@@ -1,9 +1,13 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Send } from 'lucide-react';
+import { SiteSettings } from '../types';
 
-const Contact: React.FC = () => {
+interface ContactProps {
+  data: SiteSettings | null;
+}
+
+const Contact: React.FC<ContactProps> = ({ data }) => {
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -16,7 +20,7 @@ const Contact: React.FC = () => {
     <section id="contact" className="py-32 px-10 relative">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20">
         <div>
-          <h2 className="text-4xl md:text-7xl font-bold mb-10 leading-tight">
+          <h2 className="text-4xl md:text-7xl font-bold mb-10 leading-tight uppercase tracking-tighter">
             LET'S SHAPE <br />
             <span className="text-white/20">THE FUTURE.</span>
           </h2>
@@ -27,11 +31,13 @@ const Contact: React.FC = () => {
           <div className="space-y-6">
             <div>
               <p className="text-xs uppercase tracking-widest text-purple-500 mb-2 font-mono">Email Me</p>
-              <a href="mailto:hello@nexus.design" className="text-2xl font-bold hover:text-purple-400 transition-colors">hello@nexus.design</a>
+              <a href={`mailto:${data?.contact_email || 'hello@nexus.design'}`} className="text-2xl font-bold hover:text-purple-400 transition-colors">
+                {data?.contact_email || 'hello@nexus.design'}
+              </a>
             </div>
             <div>
               <p className="text-xs uppercase tracking-widest text-purple-500 mb-2 font-mono">Location</p>
-              <p className="text-2xl font-bold">Remote / Global</p>
+              <p className="text-2xl font-bold">{data?.location || 'Remote / Global'}</p>
             </div>
           </div>
         </div>

@@ -15,7 +15,7 @@ import Scene3D from './components/Scene3D';
 import AdminDashboard from './components/AdminDashboard';
 import Login from './components/Login';
 import Register from './components/Register';
-import { Project } from './types';
+import { Project, Service, Experience, Testimonial, SiteSettings } from './types';
 import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
@@ -23,8 +23,14 @@ const App: React.FC = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [needsInstall, setNeedsInstall] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // Content State
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isInitialCheckDone, setIsInitialCheckDone] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
+  const [experience, setExperience] = useState<Experience[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+
   const [currentPath, setCurrentPath] = useState(() => {
     try {
       return window.location.pathname;
@@ -47,17 +53,17 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initializeApp = async () => {
-      // Fetch projects immediately to populate the landing page
-      fetchProjects();
+      // Non-blocking content fetch
+      fetchAllContent();
 
       try {
+        // Check for existing users to determine if /install is valid
         const { count, error: profileError } = await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true });
         
         const tableNotFound = profileError && (profileError.code === '42P01');
         const isFreshInstall = tableNotFound || (count === 0 && !profileError);
-        
         setNeedsInstall(!!isFreshInstall);
 
         const { data: { session } } = await supabase.auth.getSession();
@@ -66,11 +72,8 @@ const App: React.FC = () => {
         if (currentPath.includes('/admin') && session) {
           setIsAdmin(true);
         }
-
-        setIsInitialCheckDone(true);
       } catch (err: any) {
         console.error('Nexus Init Error:', err.message);
-        setIsInitialCheckDone(true);
       }
     };
 
@@ -93,24 +96,29 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const fetchProjects = async () => {
+  const fetchAllContent = async () => {
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [pRes, sRes, eRes, tRes, stRes] = await Promise.all([
+        supabase.from('projects').select('*').order('order_index', { ascending: true }),
+        supabase.from('services').select('*').order('order_index', { ascending: true }),
+        supabase.from('experience').select('*').order('order_index', { ascending: true }),
+        supabase.from('testimonials').select('*'),
+        supabase.from('site_settings').select('*').single()
+      ]);
 
-      if (data) {
-        const mappedProjects: Project[] = data.map((p: any) => ({
-          id: p.id,
-          title: p.title,
-          description: p.description,
-          imageUrl: p.image_url || 'https://picsum.photos/800/600',
-          techStack: p.tech_stack || [],
-          link: p.link || '#'
-        }));
-        setProjects(mappedProjects);
-      }
+      if (pRes.data) setProjects(pRes.data.map(p => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        imageUrl: p.image_url,
+        techStack: p.tech_stack || [],
+        link: p.link
+      })));
+
+      if (sRes.data) setServices(sRes.data);
+      if (eRes.data) setExperience(eRes.data);
+      if (tRes.data) setTestimonials(tRes.data);
+      if (stRes.data) setSettings(stRes.data);
     } catch (e: any) {
       console.error('Nexus Data Fetch Exception:', e.message);
     }
@@ -128,7 +136,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Only show register if path is /install AND database has no users
+  // Explicit Register routing
   if (currentPath.includes('/install') && needsInstall) {
     return (
       <Register 
@@ -138,7 +146,7 @@ const App: React.FC = () => {
           setIsAdmin(true); 
           safeUpdateHistory('/admin', 'replace');
           setCurrentPath('/admin');
-          fetchProjects();
+          fetchAllContent();
         }} 
       />
     );
@@ -152,8 +160,8 @@ const App: React.FC = () => {
           safeUpdateHistory('/');
           setCurrentPath('/');
         }} 
-        projects={projects} 
-        onUpdate={fetchProjects}
+        data={{ projects, services, experience, testimonials, settings }}
+        onUpdate={fetchAllContent}
       />
     );
   }
@@ -164,24 +172,19 @@ const App: React.FC = () => {
       
       <Suspense fallback={null}>
         <div className="fixed inset-0 z-0">
-          <Canvas 
-            shadows 
-            camera={{ position: [0, 0, 5], fov: 45 }}
-            gl={{ antialias: true }}
-          >
+          <Canvas shadows camera={{ position: [0, 0, 5], fov: 45 }} gl={{ antialias: true }}>
             <color attach="background" args={['#050505']} />
             <ScrollControls pages={7} damping={0.2}>
               <Scene3D />
               <Scroll html>
                 <div className="w-screen relative z-10 pointer-events-auto">
-                  <Hero />
-                  <Services />
+                  <Hero data={settings} />
+                  <Services data={services} />
                   <Portfolio projects={projects} />
-                  <ExperienceTimeline />
+                  <ExperienceTimeline data={experience} />
                   <TechStack />
-                  <Testimonials />
-                  <Contact />
-                  
+                  <Testimonials data={testimonials} />
+                  <Contact data={settings} />
                   <footer className="w-full py-20 px-10 flex flex-col md:flex-row justify-between items-center opacity-50 text-sm">
                     <p className="font-mono tracking-tighter">© 2024 NEXUS DESIGN STUDIO</p>
                     <div className="flex gap-6 mt-4 md:mt-0">
@@ -208,13 +211,12 @@ const App: React.FC = () => {
               setIsAdmin(true);
               safeUpdateHistory('/admin');
               setCurrentPath('/admin');
-              fetchProjects();
+              fetchAllContent();
             }} 
             onCancel={() => setShowLogin(false)} 
           />
         )}
       </AnimatePresence>
-
       <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[150px] pointer-events-none z-1"></div>
       <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-600/10 blur-[150px] pointer-events-none z-1"></div>
     </div>
