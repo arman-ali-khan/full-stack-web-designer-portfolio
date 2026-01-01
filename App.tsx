@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ScrollControls, Scroll } from '@react-three/drei';
@@ -25,35 +24,34 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isInitialCheckDone, setIsInitialCheckDone] = useState(false);
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // 1. Check Session
-        const { data: { session } } = await supabase.auth.getSession();
-        setIsAuthenticated(!!session);
-        
-        // 2. Check if any profiles exist
-        // Note: We use Head request to check count efficiently
-        const { count, error } = await supabase
+        // 1. Check if any profiles exist to determine if it's a fresh install
+        const { count, error: profileError } = await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true });
 
-        if (error) {
-          console.error('Error checking profiles:', error.message);
-          // If table doesn't exist, we might need to handle it gracefully
-          // For this app, we assume tables are created via SQL editor
-        } else if (count === 0) {
-          setNeedsInstall(true);
-        }
+        const isFreshInstall = count === 0;
+        setNeedsInstall(isFreshInstall);
+
+        // 2. Check Session
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsAuthenticated(!!session);
         
-        setIsInitialCheckDone(true);
-        if (session) {
-          fetchProjects();
-        } else {
-          // Public projects fetch
-          fetchProjects();
+        // 3. Handle routing for /install or /admin
+        if (currentPath === '/install' && !isFreshInstall) {
+          // Block /install if already installed
+          window.history.replaceState({}, '', '/');
+          setCurrentPath('/');
+        } else if (currentPath === '/admin' && !!session) {
+          setIsAdmin(true);
         }
+
+        setIsInitialCheckDone(true);
+        fetchProjects();
       } catch (err: any) {
         console.error('Initialization error:', err.message);
         setIsInitialCheckDone(true);
@@ -64,38 +62,52 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(!!session);
-      if (!session) setIsAdmin(false);
-      // Re-fetch profiles count to see if we still "need install"
-      if (session) setNeedsInstall(false);
+      if (!session) {
+        setIsAdmin(false);
+      } else {
+        setNeedsInstall(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    // Listen for path changes for simple routing
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   const fetchProjects = async () => {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching projects:', error.message);
-    } else {
-      const mappedProjects: Project[] = (data || []).map((p: any) => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        imageUrl: p.image_url || 'https://picsum.photos/800/600',
-        techStack: p.tech_stack || [],
-        link: p.link || '#'
-      }));
-      setProjects(mappedProjects);
+      if (error) {
+        console.error('Error fetching projects:', error.message);
+      } else {
+        const mappedProjects: Project[] = (data || []).map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description,
+          imageUrl: p.image_url || 'https://picsum.photos/800/600',
+          techStack: p.tech_stack || [],
+          link: p.link || '#'
+        }));
+        setProjects(mappedProjects);
+      }
+    } catch (e: any) {
+      console.error('Fetch exception:', e.message);
     }
   };
 
   const toggleAdmin = () => {
     if (isAuthenticated) {
       setIsAdmin(!isAdmin);
+      window.history.pushState({}, '', isAdmin ? '/' : '/admin');
     } else {
       setShowLogin(true);
     }
@@ -108,20 +120,21 @@ const App: React.FC = () => {
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ repeat: Infinity, duration: 1.5 }}
         >
-          BOOTING_NEXUS_CORE...
+          INITIALIZING_SECURE_KERNEL...
         </motion.div>
       </div>
     );
   }
 
-  // If no user exists, block everything and show Register/Install
-  if (needsInstall) {
+  // Show Register/Install if database is empty or specifically visiting /install when empty
+  if (needsInstall || (currentPath === '/install' && needsInstall)) {
     return (
       <Register 
         isInstallMode={true}
         onComplete={() => { 
           setNeedsInstall(false); 
           setIsAdmin(true); 
+          window.history.replaceState({}, '', '/admin');
           fetchProjects();
         }} 
       />
@@ -131,7 +144,10 @@ const App: React.FC = () => {
   if (isAdmin && isAuthenticated) {
     return (
       <AdminDashboard 
-        onClose={() => setIsAdmin(false)} 
+        onClose={() => {
+          setIsAdmin(false);
+          window.history.pushState({}, '', '/');
+        }} 
         projects={projects} 
         onUpdate={fetchProjects}
       />
@@ -140,7 +156,7 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full min-h-screen bg-[#050505] selection:bg-purple-500/30">
-      <Suspense fallback={<div className="flex items-center justify-center h-screen text-white font-mono">SYNCING_VIRTUAL_DOM...</div>}>
+      <Suspense fallback={<div className="flex items-center justify-center h-screen text-white font-mono">LOADING_3D_ASSETS...</div>}>
         <Canvas 
           shadows 
           camera={{ position: [0, 0, 5], fov: 45 }}
@@ -182,6 +198,7 @@ const App: React.FC = () => {
             onLogin={() => {
               setShowLogin(false);
               setIsAdmin(true);
+              window.history.pushState({}, '', '/admin');
               fetchProjects();
             }} 
             onCancel={() => setShowLogin(false)} 
