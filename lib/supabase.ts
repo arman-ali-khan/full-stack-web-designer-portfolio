@@ -12,5 +12,6 @@ import { createClient } from '@supabase/supabase-js';
 // In a production environment, these should be handled by your CI/CD.
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY; 
+console.log(import.meta.env.VITE_SUPABASE_URL,'import.meta.env.VITE_SUPABASE_URL')
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
