@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldAlert, UserPlus, Loader2, CheckCircle } from 'lucide-react';
@@ -21,7 +20,7 @@ const Register: React.FC<RegisterProps> = ({ onComplete, isInstallMode }) => {
     setLoading(true);
     setError(null);
 
-    // 1. Sign up user
+    // 1. Sign up user via Supabase Auth
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -34,13 +33,34 @@ const Register: React.FC<RegisterProps> = ({ onComplete, isInstallMode }) => {
     }
 
     if (data.user) {
-      setSuccess(true);
-      // Wait a moment so the user sees the success state before redirecting
-      setTimeout(() => {
-        onComplete();
-      }, 1500);
+      try {
+        // 2. IMPORTANT: Manually insert into profiles table to satisfy App.tsx check
+        // This is necessary if no DB trigger exists in Supabase to sync auth.users -> profiles
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: data.user.email
+          });
+
+        if (profileError && profileError.code !== '23505') { // Ignore unique constraint errors
+          console.warn('Profile insertion warning:', profileError.message);
+        }
+
+        setSuccess(true);
+        // Wait a moment so the user sees the success state
+        setTimeout(() => {
+          onComplete();
+        }, 1500);
+      } catch (err: any) {
+        console.error('Registration profile error:', err);
+        // Still proceed since the user is signed up
+        setSuccess(true);
+        setTimeout(() => onComplete(), 1500);
+      }
     } else {
       setLoading(false);
+      setError("Registration failed. Please try again.");
     }
   };
 
@@ -116,6 +136,7 @@ const Register: React.FC<RegisterProps> = ({ onComplete, isInstallMode }) => {
 
             <button 
               disabled={loading}
+              type="submit"
               className="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-purple-100 transition-all transform active:scale-95 flex items-center justify-center gap-3 shadow-xl"
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : "CREATE_SYSTEM_ADMIN"}

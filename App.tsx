@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ScrollControls, Scroll } from '@react-three/drei';
@@ -29,12 +30,14 @@ const App: React.FC = () => {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // 1. Check if the profiles table exists and has entries
+        // 1. Check if profiles table exists/has data
+        // Error code 42P01 means table does not exist
         const { count, error: profileError } = await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true });
 
-        // If the table doesn't exist (error code 42P01) or is empty, we need installation
+        // Removed profileError.status === 404 because PostgrestError does not have a 'status' property.
+        // PostgreSQL error code '42P01' indicates the table does not exist.
         const isFreshInstall = (profileError && profileError.code === '42P01') || count === 0;
         setNeedsInstall(isFreshInstall);
 
@@ -44,12 +47,15 @@ const App: React.FC = () => {
         
         // 3. Routing Logic
         if (currentPath === '/install' && !isFreshInstall) {
+          // Redirect away from install if already set up
           window.history.replaceState({}, '', '/');
           setCurrentPath('/');
-        } else if (currentPath === '/admin' && !!session) {
-          setIsAdmin(true);
-        } else if (currentPath === '/admin' && !session) {
-          setShowLogin(true);
+        } else if (currentPath === '/admin') {
+          if (session) {
+            setIsAdmin(true);
+          } else {
+            setShowLogin(true);
+          }
         }
 
         setIsInitialCheckDone(true);
@@ -88,7 +94,6 @@ const App: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Only log if it's not a missing table error (which is handled by needsInstall)
         if (error.code !== '42P01') {
           console.error('Error fetching projects:', error.message);
         }
@@ -112,6 +117,7 @@ const App: React.FC = () => {
     if (isAuthenticated) {
       setIsAdmin(!isAdmin);
       window.history.pushState({}, '', isAdmin ? '/' : '/admin');
+      setCurrentPath(isAdmin ? '/' : '/admin');
     } else {
       setShowLogin(true);
     }
@@ -131,8 +137,8 @@ const App: React.FC = () => {
     );
   }
 
-  // Setup/Installation View
-  if (needsInstall || (currentPath === '/install' && needsInstall)) {
+  // Force installation screen if no admin exists
+  if (needsInstall || currentPath === '/install') {
     return (
       <Register 
         isInstallMode={true}
@@ -147,7 +153,7 @@ const App: React.FC = () => {
     );
   }
 
-  // Admin View
+  // Admin Dashboard View
   if (isAdmin && isAuthenticated) {
     return (
       <AdminDashboard 
@@ -162,10 +168,10 @@ const App: React.FC = () => {
     );
   }
 
-  // Main Landing View
+  // Main Public Portfolio View
   return (
     <div className="relative w-full min-h-screen bg-[#050505] selection:bg-purple-500/30">
-      <Suspense fallback={<div className="flex items-center justify-center h-screen text-white font-mono">STABILIZING_FLUID_SCENE...</div>}>
+      <Suspense fallback={<div className="flex items-center justify-center h-screen text-white font-mono uppercase tracking-widest text-xs opacity-50">Synchronizing...</div>}>
         <Canvas 
           shadows 
           camera={{ position: [0, 0, 5], fov: 45 }}
@@ -185,7 +191,7 @@ const App: React.FC = () => {
                 <Contact />
                 
                 <footer className="w-full py-20 px-10 flex flex-col md:flex-row justify-between items-center opacity-50 text-sm">
-                  <p>© 2024 NEXUS DESIGN STUDIO</p>
+                  <p className="font-mono tracking-tighter">© 2024 NEXUS DESIGN STUDIO</p>
                   <div className="flex gap-6 mt-4 md:mt-0">
                     <a href="#" className="hover:text-purple-400 transition-colors uppercase tracking-widest text-[10px]">Dribbble</a>
                     <a href="#" className="hover:text-purple-400 transition-colors uppercase tracking-widest text-[10px]">Twitter</a>
