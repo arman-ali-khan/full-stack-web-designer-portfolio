@@ -1,14 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Layout, Plus, Trash2, Save, LogOut, 
   Image as ImageIcon, Loader2, 
   Briefcase, Quote, Monitor, Home, Zap,
-  CheckCircle2, Upload,
+  CheckCircle2, Upload, ExternalLink,
   Smartphone, Cpu, Layers, Code, 
   PenTool, Globe, Shield, Database, 
   Cloud, Terminal, Palette, Search, 
-  Rocket, MessageSquare, Share2, Link,
+  Rocket, MessageSquare, Share2, Link as LinkIcon,
   Compass, Mail, Settings, Grid, ChevronRight
 } from 'lucide-react';
 import { Project, Service, Experience, Testimonial, Skill, SiteSettings, NavbarItem, ContactMessage } from '../types';
@@ -24,7 +25,7 @@ const AVAILABLE_ICONS = [
 
 const iconComponentMap: Record<string, any> = {
   Home, Layout, Grid, Briefcase, Mail, Monitor, Smartphone, Cpu, Layers, Code, 
-  PenTool, Globe, Zap, Shield, Database, Cloud, Terminal, Palette, Search, Rocket, MessageSquare, Share2, Link
+  PenTool, Globe, Zap, Shield, Database, Cloud, Terminal, Palette, Search, Rocket, MessageSquare, Share2, Link: LinkIcon
 };
 
 interface AdminDashboardProps {
@@ -269,9 +270,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, data, onUpdate
                         <div className="absolute inset-0 bg-purple-600/20 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center"><Upload size={20} /></div>
                       </div>
                       <input id={`upload-${p.id}`} type="file" className="hidden" onChange={(e) => handleFileUpload(e, p.id)} />
+                      
+                      {p.link && (
+                        <a 
+                          href={p.link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="w-full flex items-center justify-center gap-2 py-2 text-[9px] uppercase tracking-widest font-mono text-purple-400 border border-purple-500/20 rounded-lg hover:bg-purple-500/10 transition-colors"
+                        >
+                          <ExternalLink size={12} /> Visit Site
+                        </a>
+                      )}
                     </div>
                     <div className="flex-1 space-y-4">
-                      <Input label="Title" value={p.title} onChange={v => setLocalProjects(localProjects.map(i => i.id === p.id ? {...i, title: v} : i))} />
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input label="Title" value={p.title} onChange={v => setLocalProjects(localProjects.map(i => i.id === p.id ? {...i, title: v} : i))} />
+                        <Input label="Project URL" value={p.link} placeholder="https://..." onChange={v => setLocalProjects(localProjects.map(i => i.id === p.id ? {...i, link: v} : i))} />
+                      </div>
                       <Textarea label="Description" value={p.description} onChange={v => setLocalProjects(localProjects.map(i => i.id === p.id ? {...i, description: v} : i))} />
                     </div>
                     <button onClick={() => removeItem('projects', 'projects', p.id)} className="absolute top-4 right-4 p-2 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button>
@@ -406,10 +421,16 @@ const SectionHeader = ({ title, subtitle }: any) => (
   </div>
 );
 
-const Input = ({ label, value, onChange }: any) => (
+const Input = ({ label, value, onChange, placeholder, type = 'text' }: any) => (
   <div className="space-y-1.5 flex-1">
     <label className="text-[9px] uppercase tracking-[0.2em] text-white/30 ml-2">{label}</label>
-    <input value={value || ''} onChange={e => onChange(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 font-sans text-sm" />
+    <input 
+      type={type}
+      value={value || ''} 
+      placeholder={placeholder}
+      onChange={e => onChange(e.target.value)} 
+      className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 font-sans text-sm" 
+    />
   </div>
 );
 
