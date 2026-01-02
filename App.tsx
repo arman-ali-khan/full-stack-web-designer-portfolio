@@ -35,7 +35,6 @@ const App: React.FC = () => {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
 
-  // Use state-based routing to avoid pushState security errors in sandboxed frames
   const [currentPath, setCurrentPath] = useState(() => {
     try { 
       return window.location.pathname; 
@@ -77,7 +76,6 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchAllContent();
     const init = async () => {
-      // Check if any profiles exist to determine if the system needs installation
       const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
       if (count === 0) {
         setNeedsInstall(true);
@@ -88,7 +86,6 @@ const App: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsAuthenticated(!!session);
       
-      // Use state instead of direct path manipulation where possible
       if (currentPath === '/admin' && session) {
         setIsAdmin(true);
       }
@@ -106,7 +103,6 @@ const App: React.FC = () => {
     if (isAuthenticated) {
       setIsAdmin(!isAdmin);
       const nextPath = !isAdmin ? '/admin' : '/';
-      // Use internal state only to avoid SecurityError with pushState in sandboxed frames
       setCurrentPath(nextPath);
     } else {
       setShowLogin(true);
@@ -117,7 +113,6 @@ const App: React.FC = () => {
     setCurrentPath(path);
   };
 
-  // Requirement: Show the /install page only if the user explicitly visits it and no user exists.
   if (currentPath === '/install' && needsInstall) {
     return (
       <Register 
@@ -131,7 +126,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Admin Dashboard view
   if (isAdmin && isAuthenticated && currentPath === '/admin') {
     return (
       <AdminDashboard 
@@ -145,7 +139,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Default view (Landing Page / Portfolio)
   return (
     <div className="relative w-full min-h-screen bg-[#050505] selection:bg-purple-500/30">
       <Header onLoginClick={handleAdminToggle} isAuthenticated={isAuthenticated} settings={settings} />
@@ -158,7 +151,7 @@ const App: React.FC = () => {
               <Scene3D />
               <Scroll html>
                 <div className="w-screen relative z-10 pointer-events-auto">
-                  <Hero data={settings} />
+                  <Hero data={settings} skills={skills} />
                   <Services data={services} />
                   <Portfolio projects={projects} />
                   <ExperienceTimeline data={experience} />

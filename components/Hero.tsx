@@ -1,12 +1,16 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
-import { SiteSettings } from '../types';
+import { SiteSettings, Skill } from '../types';
 
 interface HeroProps {
   data: SiteSettings | null;
+  skills: Skill[];
 }
 
-const Hero: React.FC<HeroProps> = ({ data }) => {
+const Hero: React.FC<HeroProps> = ({ data, skills }) => {
+  const displaySkills = skills.slice(0, 5);
+
   return (
     <section id="home" className="h-screen flex flex-col items-center justify-center px-6 relative">
       <motion.div
@@ -15,13 +19,30 @@ const Hero: React.FC<HeroProps> = ({ data }) => {
         transition={{ duration: 0.8 }}
         className="text-center z-10"
       >
-        <span className="text-purple-500 font-mono tracking-[0.3em] text-xs mb-4 block uppercase">
-          {data?.hero_subtitle || 'Digital Architect & Interface Designer'}
-        </span>
+        <div className="flex flex-col items-center gap-2 mb-6">
+          <span className="text-purple-500 font-mono tracking-[0.3em] text-xs block uppercase">
+            {data?.hero_subtitle || 'Digital Architect & Interface Designer'}
+          </span>
+          {displaySkills.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1 }}
+              className="flex gap-3 mt-2"
+            >
+              {displaySkills.map(skill => (
+                <span key={skill.id} className="text-[8px] font-black tracking-widest text-white/30 border border-white/5 px-2 py-0.5 rounded uppercase bg-white/5">
+                  {skill.name}
+                </span>
+              ))}
+            </motion.div>
+          )}
+        </div>
+
         <h1 className="text-6xl md:text-9xl font-bold tracking-tighter leading-none mb-6">
-          {data?.hero_title.split(' ').slice(0, 1) || 'CRAFTING'} <br />
+          {data?.hero_title?.split(' ').slice(0, 1) || 'CRAFTING'} <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-cyan-400 to-purple-500 bg-[length:200%_auto] animate-gradient">
-            {data?.hero_title.split(' ').slice(1).join(' ') || 'DIGITAL REALMS'}
+            {data?.hero_title?.split(' ').slice(1).join(' ') || 'DIGITAL REALMS'}
           </span>
         </h1>
         <p className="max-w-xl mx-auto text-white/60 text-lg md:text-xl font-light leading-relaxed mb-10">
@@ -33,7 +54,7 @@ const Hero: React.FC<HeroProps> = ({ data }) => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => document.getElementById('work')?.scrollIntoView({ behavior: 'smooth' })}
-            className="px-8 py-4 bg-white text-black font-bold rounded-full hover:bg-purple-100 transition-colors"
+            className="px-8 py-4 bg-white text-black font-bold rounded-full hover:bg-purple-100 transition-colors shadow-2xl shadow-white/5"
           >
             EXPLORE WORK
           </motion.button>
@@ -41,7 +62,7 @@ const Hero: React.FC<HeroProps> = ({ data }) => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
-            className="px-8 py-4 glass text-white font-bold rounded-full"
+            className="px-8 py-4 glass text-white font-bold rounded-full border-white/10 hover:border-white/20"
           >
             LET'S TALK
           </motion.button>
@@ -49,7 +70,7 @@ const Hero: React.FC<HeroProps> = ({ data }) => {
       </motion.div>
 
       <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-30">
-        <span className="text-[10px] tracking-widest">SCROLL</span>
+        <span className="text-[10px] tracking-widest uppercase font-mono">Status_Online</span>
         <div className="w-[1px] h-12 bg-gradient-to-b from-white to-transparent" />
       </div>
 

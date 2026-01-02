@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Skill } from '../types';
@@ -13,29 +14,36 @@ const TechStack: React.FC<TechStackProps> = ({ skills }) => {
   ];
 
   return (
-    <section className="py-20 bg-white/5 backdrop-blur-sm border-y border-white/5 relative overflow-hidden">
+    <section className="py-24 bg-black/40 backdrop-blur-md border-y border-white/5 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-32 h-full bg-gradient-to-r from-black to-transparent z-10 pointer-events-none" />
+      <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-black to-transparent z-10 pointer-events-none" />
+      
       <div className="flex whitespace-nowrap overflow-hidden group">
         <motion.div
           animate={{ x: [0, -1000] }}
           transition={{
-            duration: 20,
+            duration: 25,
             repeat: Infinity,
             ease: "linear",
           }}
-          className="flex items-center gap-20 py-10"
+          className="flex items-center gap-24 py-10"
         >
           {[...displayTech, ...displayTech, ...displayTech].map((item, idx) => (
             <span 
               key={idx} 
-              className="text-4xl md:text-6xl font-black text-transparent stroke-text opacity-20 hover:opacity-100 hover:text-white transition-all cursor-default uppercase"
-              style={{
-                WebkitTextStroke: '1px rgba(255,255,255,0.5)'
-              }}
+              className={`text-5xl md:text-8xl font-black transition-all cursor-default uppercase font-sans tracking-tighter ${
+                idx % 2 === 0 ? 'text-white opacity-20 hover:opacity-100' : 'stroke-text opacity-10 hover:opacity-50'
+              }`}
+              style={idx % 2 !== 0 ? { WebkitTextStroke: '1px rgba(255,255,255,0.8)' } : {}}
             >
               {item}
             </span>
           ))}
         </motion.div>
+      </div>
+
+      <div className="mt-12 text-center opacity-20">
+        <p className="text-[10px] font-mono uppercase tracking-[0.5em]">Global_Protocol_Support</p>
       </div>
 
       <style>{`
