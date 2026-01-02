@@ -28,8 +28,12 @@ const iconComponentMap: Record<string, any> = {
   PenTool, Globe, Zap, Shield, Database, Cloud, Terminal, Palette, Search, Rocket, MessageSquare, Share2, Link: LinkIcon
 };
 
+type TabType = 'hero' | 'services' | 'projects' | 'experience' | 'testimonials' | 'skills' | 'nav' | 'messages';
+
 interface AdminDashboardProps {
   onClose: () => void;
+  currentSubPath: string;
+  onNavigate: (path: string) => void;
   data: {
     projects: Project[];
     services: Service[];
@@ -41,8 +45,8 @@ interface AdminDashboardProps {
   onUpdate: () => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, data, onUpdate }) => {
-  const [activeTab, setActiveTab] = useState<'hero' | 'services' | 'projects' | 'experience' | 'testimonials' | 'skills' | 'nav' | 'messages'>('hero');
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, currentSubPath, onNavigate, data, onUpdate }) => {
+  const [activeTab, setActiveTab] = useState<TabType>('hero');
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -59,6 +63,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, data, onUpdate
   const [localSkills, setLocalSkills] = useState<Skill[]>(data.skills);
   const [localNav, setLocalNav] = useState<NavbarItem[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
+
+  // Sync activeTab with URL
+  useEffect(() => {
+    const tabFromPath = currentSubPath.split('/')[2] as TabType;
+    if (tabFromPath && ['hero', 'services', 'projects', 'experience', 'testimonials', 'skills', 'nav', 'messages'].includes(tabFromPath)) {
+      setActiveTab(tabFromPath);
+    } else {
+      setActiveTab('hero');
+    }
+  }, [currentSubPath]);
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    onNavigate(`/admin/${tab}`);
+  };
 
   useEffect(() => {
     fetchNavAndMessages();
@@ -98,16 +117,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, data, onUpdate
     setIsSaving(true);
     setSaveStatus('idle');
     try {
-      // 1. Site Settings
       await supabase.from('site_settings').upsert({ id: 1, ...localSettings });
       
-      // 2. Navbar
       if (localNav.length > 0) {
         const navToUpsert = localNav.map((item, i) => ({ ...item, order_index: i }));
         await supabase.from('navbar_items').upsert(navToUpsert);
       }
 
-      // 3. Projects
       const projectsToUpsert = localProjects.map((p, i) => ({
         id: p.id, 
         title: p.title, 
@@ -120,25 +136,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, data, onUpdate
       }));
       if (projectsToUpsert.length > 0) await supabase.from('projects').upsert(projectsToUpsert);
 
-      // 4. Services
       const servicesToUpsert = localServices.map((s, i) => ({
         id: s.id, title: s.title, description: s.description, icon_name: s.icon_name, order_index: i
       }));
       if (servicesToUpsert.length > 0) await supabase.from('services').upsert(servicesToUpsert);
 
-      // 5. Skills
       const skillsToUpsert = localSkills.map((s, i) => ({
         id: s.id, name: s.name, order_index: i
       }));
       if (skillsToUpsert.length > 0) await supabase.from('skills').upsert(skillsToUpsert);
 
-      // 6. Experience
       const expToUpsert = localExperience.map((e, i) => ({
         id: e.id, role: e.role, company: e.company, period: e.period, description: e.description, order_index: i
       }));
       if (expToUpsert.length > 0) await supabase.from('experience').upsert(expToUpsert);
 
-      // 7. Testimonials
       if (localTestimonials.length > 0) await supabase.from('testimonials').upsert(localTestimonials);
 
       await onUpdate();
@@ -193,15 +205,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, data, onUpdate
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scroll">
-          <TabButton active={activeTab === 'hero'} onClick={() => setActiveTab('hero')} icon={<Home size={16}/>} label="Branding" />
-          <TabButton active={activeTab === 'nav'} onClick={() => setActiveTab('nav')} icon={<Compass size={16}/>} label="Navigation" />
-          <TabButton active={activeTab === 'projects'} onClick={() => setActiveTab('projects')} icon={<Layout size={16}/>} label="Works" />
-          <TabButton active={activeTab === 'services'} onClick={() => setActiveTab('services')} icon={<Monitor size={16}/>} label="Services" />
-          <TabButton active={activeTab === 'skills'} onClick={() => setActiveTab('skills')} icon={<Zap size={16}/>} label="Tech Stack" />
-          <TabButton active={activeTab === 'experience'} onClick={() => setActiveTab('experience')} icon={<Briefcase size={16}/>} label="Journey" />
-          <TabButton active={activeTab === 'testimonials'} onClick={() => setActiveTab('testimonials')} icon={<Quote size={16}/>} label="Echo" />
+          <TabButton active={activeTab === 'hero'} onClick={() => handleTabChange('hero')} icon={<Home size={16}/>} label="Branding" />
+          <TabButton active={activeTab === 'nav'} onClick={() => handleTabChange('nav')} icon={<Compass size={16}/>} label="Navigation" />
+          <TabButton active={activeTab === 'projects'} onClick={() => handleTabChange('projects')} icon={<Layout size={16}/>} label="Works" />
+          <TabButton active={activeTab === 'services'} onClick={() => handleTabChange('services')} icon={<Monitor size={16}/>} label="Services" />
+          <TabButton active={activeTab === 'skills'} onClick={() => handleTabChange('skills')} icon={<Zap size={16}/>} label="Tech Stack" />
+          <TabButton active={activeTab === 'experience'} onClick={() => handleTabChange('experience')} icon={<Briefcase size={16}/>} label="Journey" />
+          <TabButton active={activeTab === 'testimonials'} onClick={() => handleTabChange('testimonials')} icon={<Quote size={16}/>} label="Echo" />
           <div className="h-4" />
-          <TabButton active={activeTab === 'messages'} onClick={() => setActiveTab('messages')} icon={<Mail size={16}/>} label="Inbox" count={messages.length} />
+          <TabButton active={activeTab === 'messages'} onClick={() => handleTabChange('messages')} icon={<Mail size={16}/>} label="Inbox" count={messages.length} />
         </nav>
 
         <div className="mt-auto space-y-4 pt-4 border-t border-white/5">
@@ -280,22 +292,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, data, onUpdate
                       
                       <div className="grid grid-cols-2 gap-2">
                         {p.link && (
-                          <a 
-                            href={p.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 py-2 text-[8px] uppercase tracking-tighter font-mono text-purple-400 border border-purple-500/20 rounded-lg hover:bg-purple-500/10 transition-colors"
-                          >
+                          <a href={p.link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-2 text-[8px] uppercase tracking-tighter font-mono text-purple-400 border border-purple-500/20 rounded-lg hover:bg-purple-500/10 transition-colors">
                             <ExternalLink size={10} /> Site
                           </a>
                         )}
                         {p.previewUrl && (
-                          <a 
-                            href={p.previewUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 py-2 text-[8px] uppercase tracking-tighter font-mono text-cyan-400 border border-cyan-500/20 rounded-lg hover:bg-cyan-500/10 transition-colors"
-                          >
+                          <a href={p.previewUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-2 text-[8px] uppercase tracking-tighter font-mono text-cyan-400 border border-cyan-500/20 rounded-lg hover:bg-cyan-500/10 transition-colors">
                             <Eye size={10} /> Preview
                           </a>
                         )}
@@ -444,13 +446,7 @@ const SectionHeader = ({ title, subtitle }: any) => (
 const Input = ({ label, value, onChange, placeholder, type = 'text' }: any) => (
   <div className="space-y-1.5 flex-1">
     <label className="text-[9px] uppercase tracking-[0.2em] text-white/30 ml-2">{label}</label>
-    <input 
-      type={type}
-      value={value || ''} 
-      placeholder={placeholder}
-      onChange={e => onChange(e.target.value)} 
-      className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 font-sans text-sm" 
-    />
+    <input type={type} value={value || ''} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500 font-sans text-sm" />
   </div>
 );
 

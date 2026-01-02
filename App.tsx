@@ -43,6 +43,29 @@ const App: React.FC = () => {
     }
   });
 
+  const navigateTo = (path: string) => {
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+    setCurrentPath(path);
+    
+    // Auto-toggle admin state based on path
+    if (path.startsWith('/admin')) {
+      setIsAdmin(true);
+    } else {
+      setIsAdmin(false);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+      setIsAdmin(window.location.pathname.startsWith('/admin'));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const fetchAllContent = async () => {
     try {
       const [pRes, sRes, eRes, tRes, stRes, skRes] = await Promise.all([
@@ -86,14 +109,20 @@ const App: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsAuthenticated(!!session);
       
-      if (currentPath === '/admin' && session) {
+      // If user lands on /admin and is logged in, show dashboard
+      if (currentPath.startsWith('/admin') && session) {
         setIsAdmin(true);
+      } else if (currentPath.startsWith('/admin') && !session) {
+        setShowLogin(true);
       }
     };
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(!!session);
+      if (session && currentPath.startsWith('/admin')) {
+        setIsAdmin(true);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -101,16 +130,14 @@ const App: React.FC = () => {
 
   const handleAdminToggle = () => {
     if (isAuthenticated) {
-      setIsAdmin(!isAdmin);
-      const nextPath = !isAdmin ? '/admin' : '/';
-      setCurrentPath(nextPath);
+      if (isAdmin) {
+        navigateTo('/');
+      } else {
+        navigateTo('/admin');
+      }
     } else {
       setShowLogin(true);
     }
-  };
-
-  const navigateTo = (path: string) => {
-    setCurrentPath(path);
   };
 
   if (currentPath === '/install' && needsInstall) {
@@ -126,13 +153,12 @@ const App: React.FC = () => {
     );
   }
 
-  if (isAdmin && isAuthenticated && currentPath === '/admin') {
+  if (isAdmin && isAuthenticated && currentPath.startsWith('/admin')) {
     return (
       <AdminDashboard 
-        onClose={() => { 
-          setIsAdmin(false); 
-          navigateTo('/');
-        }} 
+        onClose={() => navigateTo('/')} 
+        currentSubPath={currentPath}
+        onNavigate={navigateTo}
         data={{ projects, services, experience, testimonials, settings, skills }}
         onUpdate={fetchAllContent}
       />
@@ -182,11 +208,13 @@ const App: React.FC = () => {
           <Login 
             onLogin={() => { 
               setShowLogin(false); 
-              setIsAdmin(true); 
               navigateTo('/admin');
               fetchAllContent(); 
             }} 
-            onCancel={() => setShowLogin(false)} 
+            onCancel={() => {
+              setShowLogin(false);
+              if (currentPath.startsWith('/admin')) navigateTo('/');
+            }} 
           />
         )}
       </AnimatePresence>
