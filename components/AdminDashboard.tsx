@@ -5,7 +5,7 @@ import {
   Layout, Plus, Trash2, Save, LogOut, 
   Image as ImageIcon, Loader2, 
   Briefcase, Quote, Monitor, Home, Zap,
-  CheckCircle2, Upload, ExternalLink,
+  CheckCircle2, Upload, ExternalLink, Eye,
   Smartphone, Cpu, Layers, Code, 
   PenTool, Globe, Shield, Database, 
   Cloud, Terminal, Palette, Search, 
@@ -109,7 +109,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, data, onUpdate
 
       // 3. Projects
       const projectsToUpsert = localProjects.map((p, i) => ({
-        id: p.id, title: p.title, description: p.description, image_url: p.imageUrl, tech_stack: p.techStack || [], link: p.link, order_index: i
+        id: p.id, 
+        title: p.title, 
+        description: p.description, 
+        image_url: p.imageUrl, 
+        tech_stack: p.techStack || [], 
+        link: p.link,
+        preview_url: p.previewUrl,
+        order_index: i
       }));
       if (projectsToUpsert.length > 0) await supabase.from('projects').upsert(projectsToUpsert);
 
@@ -148,7 +155,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, data, onUpdate
   const addItem = (type: string) => {
     const newId = crypto.randomUUID();
     if (type === 'nav') setLocalNav([...localNav, { id: newId, label: 'New Link', href: '#', icon_name: 'Home', order_index: localNav.length }]);
-    if (type === 'project') setLocalProjects([...localProjects, { id: newId, title: 'New Work', description: '', imageUrl: '', techStack: [], link: '' }]);
+    if (type === 'project') setLocalProjects([...localProjects, { id: newId, title: 'New Work', description: '', imageUrl: '', techStack: [], link: '', previewUrl: '' }]);
     if (type === 'service') setLocalServices([...localServices, { id: newId, title: 'New Service', description: '', icon_name: 'Monitor' }]);
     if (type === 'skill') setLocalSkills([...localSkills, { id: newId, name: 'New Tech', order_index: localSkills.length }]);
     if (type === 'experience') setLocalExperience([...localExperience, { id: newId, role: 'New Role', company: 'New Co', period: '2024', description: 'Description' }]);
@@ -271,21 +278,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, data, onUpdate
                       </div>
                       <input id={`upload-${p.id}`} type="file" className="hidden" onChange={(e) => handleFileUpload(e, p.id)} />
                       
-                      {p.link && (
-                        <a 
-                          href={p.link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="w-full flex items-center justify-center gap-2 py-2 text-[9px] uppercase tracking-widest font-mono text-purple-400 border border-purple-500/20 rounded-lg hover:bg-purple-500/10 transition-colors"
-                        >
-                          <ExternalLink size={12} /> Visit Site
-                        </a>
-                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        {p.link && (
+                          <a 
+                            href={p.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 py-2 text-[8px] uppercase tracking-tighter font-mono text-purple-400 border border-purple-500/20 rounded-lg hover:bg-purple-500/10 transition-colors"
+                          >
+                            <ExternalLink size={10} /> Site
+                          </a>
+                        )}
+                        {p.previewUrl && (
+                          <a 
+                            href={p.previewUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 py-2 text-[8px] uppercase tracking-tighter font-mono text-cyan-400 border border-cyan-500/20 rounded-lg hover:bg-cyan-500/10 transition-colors"
+                          >
+                            <Eye size={10} /> Preview
+                          </a>
+                        )}
+                      </div>
                     </div>
                     <div className="flex-1 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-4">
                         <Input label="Title" value={p.title} onChange={v => setLocalProjects(localProjects.map(i => i.id === p.id ? {...i, title: v} : i))} />
                         <Input label="Project URL" value={p.link} placeholder="https://..." onChange={v => setLocalProjects(localProjects.map(i => i.id === p.id ? {...i, link: v} : i))} />
+                        <Input label="Preview URL" value={p.previewUrl} placeholder="Optional demo link..." onChange={v => setLocalProjects(localProjects.map(i => i.id === p.id ? {...i, previewUrl: v} : i))} />
                       </div>
                       <Textarea label="Description" value={p.description} onChange={v => setLocalProjects(localProjects.map(i => i.id === p.id ? {...i, description: v} : i))} />
                     </div>

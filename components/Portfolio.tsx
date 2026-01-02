@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Project } from '../types';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Eye } from 'lucide-react';
 
 interface PortfolioProps {
   projects: Project[];
@@ -54,19 +54,35 @@ const Portfolio: React.FC<PortfolioProps> = ({ projects }) => {
                 </div>
               </div>
               
-              {project.link && (
-                <div className="ml-6 flex flex-col items-center gap-3">
-                  <a 
-                    href={project.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-5 rounded-full glass hover:bg-white hover:text-black transition-all group-hover:rotate-45 shadow-2xl shadow-purple-500/0 hover:shadow-purple-500/20"
-                  >
-                    <ArrowUpRight size={24} />
-                  </a>
-                  <span className="text-[8px] font-black tracking-widest text-white/20 uppercase">Open_Link</span>
-                </div>
-              )}
+              <div className="ml-6 flex items-start gap-4">
+                {project.previewUrl && (
+                  <div className="flex flex-col items-center gap-3">
+                    <a 
+                      href={project.previewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-5 rounded-full glass border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500 hover:text-black transition-all shadow-2xl shadow-cyan-500/0 hover:shadow-cyan-500/20"
+                    >
+                      <Eye size={22} />
+                    </a>
+                    <span className="text-[8px] font-black tracking-widest text-cyan-400/50 uppercase">Preview</span>
+                  </div>
+                )}
+                
+                {project.link && (
+                  <div className="flex flex-col items-center gap-3">
+                    <a 
+                      href={project.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-5 rounded-full glass border border-purple-500/20 text-purple-400 hover:bg-white hover:text-black transition-all group-hover:rotate-45 shadow-2xl shadow-purple-500/0 hover:shadow-purple-500/20"
+                    >
+                      <ArrowUpRight size={22} />
+                    </a>
+                    <span className="text-[8px] font-black tracking-widest text-white/20 uppercase">Visit</span>
+                  </div>
+                )}
+              </div>
             </div>
           </motion.div>
         ))}

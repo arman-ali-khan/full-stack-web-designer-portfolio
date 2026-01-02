@@ -56,7 +56,13 @@ const App: React.FC = () => {
       ]);
 
       if (pRes.data) setProjects(pRes.data.map(p => ({
-        id: p.id, title: p.title, description: p.description, imageUrl: p.image_url, techStack: p.tech_stack || [], link: p.link
+        id: p.id, 
+        title: p.title, 
+        description: p.description, 
+        imageUrl: p.image_url, 
+        techStack: p.tech_stack || [], 
+        link: p.link,
+        previewUrl: p.preview_url
       })));
       if (sRes.data) setServices(sRes.data);
       if (eRes.data) setExperience(eRes.data);

@@ -6,6 +6,7 @@ export interface Project {
   imageUrl: string;
   techStack: string[];
   link: string;
+  previewUrl?: string;
   order_index?: number;
 }
 
